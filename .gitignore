@@ -1,3 +1,5 @@
 game.so
 main
 raylib-5.0/
+zig-cache/
+zig-out/

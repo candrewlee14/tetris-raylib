@@ -1,0 +1,14 @@
+.{
+    .name = "tetris-raylib",
+    .version = "0.1.0",
+    .dependencies = .{
+        .raylib = .{
+            .url = "https://github.com/candrewlee14/raylib/archive/55242a75c7d09cf85653ed64b99eaba2fb14e9b4.tar.gz",
+            .hash = "1220c183c49d9fcb1dbf521dac9a5213b51a605f64d7e50132cf8a9074e1351706b0",
+        },
+    },
+    .paths = .{
+        "src",
+        "build.zig",
+    }
+}

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "./raylib-5.0/include/raylib.h"
+#include "raylib.h"
 #include "game.h"
 #include "tetr.h"
 
@@ -293,6 +293,8 @@ void* module_main(void* data) {
     if (state == NULL) {
         state = (struct GameState*)malloc(sizeof(struct GameState));
         GameInit(state);
+        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_MSAA_4X_HINT);
+        SetTargetFPS(60);
         InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
     } else {
       // run on reload
@@ -321,7 +323,9 @@ void* module_main(void* data) {
             QuitButton(state);
             PlayButton(state);
             DrawStats(state);
-
+            #ifdef DEBUG
+                DrawFPS(10, 10);
+            #endif
 
             if (state->playstate == STATE_PLAYING) {
                 DrawTetrimino(state->preview_block.id, 
@@ -379,16 +383,19 @@ void* module_main(void* data) {
             state->playstate = STATE_QUITTING;
             return state;
         }
-        else if (IsKeyPressed(KEY_R)) {
-            printf("Reloading...\n");
-            return state;
-        }
+        #ifdef DEBUG
+            if (IsKeyPressed(KEY_R)) {
+                printf("Reloading...\n");
+                return state;
+            }
+        #endif
         if (state->playstate == STATE_QUITTING) {
             return state;
         } 
     }
 
     CloseWindow();
+    state->playstate = STATE_QUITTING;
 
     return state;
 }
