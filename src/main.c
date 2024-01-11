@@ -8,12 +8,6 @@ typedef void* module_main_func(void* data);
 
 int main(void)
 {
-    char* cc = getenv("CC");
-    if (cc == NULL) {
-        cc = "clang";
-    }
-    char cmd_buf[256];
-    // snprintf(cmd_buf, 256, "%s -fPIC -shared -o game.so game.c -lraylib", cc);
     struct GameState* state = NULL;
     while (true) {
         #ifdef DEBUG
@@ -21,7 +15,12 @@ int main(void)
             printf("Built game reloadable\n");
         #endif
 
-        void* handle = dlopen("./zig-out/lib/libgame-reloadable.so", RTLD_LAZY | RTLD_GLOBAL);
+        #ifdef LINUX
+            void* handle = dlopen("./zig-out/lib/libgame-reloadable.so", RTLD_LAZY | RTLD_GLOBAL);
+        #elif MACOS
+            void* handle = dlopen("./zig-out/lib/libgame-reloadable.dylib", RTLD_LAZY | RTLD_GLOBAL);
+        #endif
+
         if (handle == NULL) {
             fprintf(stderr, "Failed to load module. (%s)\n", dlerror());
             fprintf(stderr, "Press return to try again.\n");

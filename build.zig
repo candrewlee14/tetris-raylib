@@ -57,6 +57,17 @@ pub fn build(b: *std.Build) void {
         exe.root_module.addCMacro("DEBUG", "1");
         game_obj.root_module.addCMacro("DEBUG", "1");
     }
+    switch (target.result.os.tag) {
+        .linux => {
+            exe.root_module.addCMacro("LINUX", "1");
+            game_obj.root_module.addCMacro("LINUX", "1");
+        },
+        .macos => {
+            exe.root_module.addCMacro("MACOS", "1");
+            game_obj.root_module.addCMacro("MACOS", "1");
+        },
+        else => @panic("Unsupported OS"),
+    }
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
