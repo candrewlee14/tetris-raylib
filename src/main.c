@@ -13,21 +13,22 @@ int main(void)
         #ifdef DEBUG
             system("zig build game-reloadable");
             printf("Built game reloadable\n");
+            #ifdef LINUX
+                void* handle = dlopen("./zig-out/lib/libgame-reloadable.so", RTLD_LAZY | RTLD_GLOBAL);
+            #elif MACOS
+                void* handle = dlopen("./zig-out/lib/libgame-reloadable.dylib", RTLD_LAZY | RTLD_GLOBAL);
+            #endif
+            if (handle == NULL) {
+                fprintf(stderr, "Failed to load module. (%s)\n", dlerror());
+                fprintf(stderr, "Press return to try again.\n");
+                getchar();
+            }
+            module_main_func* main_func = (module_main_func*)dlsym(handle, "module_main");
+        #else 
+            // this is linked in and will be module_main
+            module_main_func* main_func = (module_main_func*)module_main;
         #endif
 
-        #ifdef LINUX
-            void* handle = dlopen("./zig-out/lib/libgame-reloadable.so", RTLD_LAZY | RTLD_GLOBAL);
-        #elif MACOS
-            void* handle = dlopen("./zig-out/lib/libgame-reloadable.dylib", RTLD_LAZY | RTLD_GLOBAL);
-        #endif
-
-        if (handle == NULL) {
-            fprintf(stderr, "Failed to load module. (%s)\n", dlerror());
-            fprintf(stderr, "Press return to try again.\n");
-            getchar();
-        }
-
-        module_main_func* main_func = (module_main_func*)dlsym(handle, "module_main");
         if (main_func == NULL) {
             printf("Error: %s\n", dlerror());
             return 1;

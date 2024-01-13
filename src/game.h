@@ -6,6 +6,7 @@
 
 enum PlayState {
   STATE_MENU,
+  STATE_PAUSED,
   STATE_PLAYING,
   STATE_GAME_OVER,
   STATE_QUITTING,
@@ -47,4 +48,5 @@ struct GameState {
   Sound hover_button_sound;
   bool is_hovering_play_button;
   bool is_hovering_quit_button;
+  bool is_hovering_pause_button;
 };

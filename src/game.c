@@ -12,7 +12,8 @@
 #define BUTTON_SIZE 20
 
 #define BUTTON_WIDTH 120
-#define BUTTON_HEIGHT 50
+#define BUTTON_HEIGHT 40
+#define BUTTON_SPACING 15
 
 #define BLOCK_SIZE 24
 
@@ -21,7 +22,10 @@
 #define GAME_BOARD_W (BLOCK_COUNT_X*BLOCK_SIZE)
 #define GAME_BOARD_H (BLOCK_COUNT_Y*BLOCK_SIZE)
 
+#define GAMEPAD 0
+
 #define TIME_STEP 0.5f
+#define TIME_STEP_FAST 0.1f
 
 void InitSound(struct GameState* state) {
     InitAudioDevice();
@@ -241,14 +245,14 @@ void QuitButton(struct GameState* state) {
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
-             button_y + BUTTON_SIZE/2 + 5, BUTTON_SIZE, BLACK);
+             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
 }
 
 void PlayButton(struct GameState* state) {
     int button_x = WINDOW_WIDTH - 100 - 50;
-    int button_y = WINDOW_HEIGHT - 86 - 80;
+    int button_y = WINDOW_HEIGHT - 86 - (BUTTON_HEIGHT + BUTTON_SPACING);
     char* text = "PLAY";
-    char* restart = "REPLAY";
+    char* restart = "RESTART";
     if (state->playstate != STATE_MENU) {
         text = restart;
     }
@@ -270,7 +274,49 @@ void PlayButton(struct GameState* state) {
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
-             button_y + BUTTON_SIZE/2 + 5, BUTTON_SIZE, BLACK);
+             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
+}
+
+void PauseButton(struct GameState* state) {
+    if (state->playstate == STATE_MENU || state->playstate == STATE_GAME_OVER) {
+        return;
+    }
+    int button_x = WINDOW_WIDTH - 100 - 50;
+    int button_y = WINDOW_HEIGHT - 86 - (BUTTON_HEIGHT + BUTTON_SPACING) * 2;
+    char* text = "PAUSE";
+    if (state->playstate == STATE_PAUSED) {
+        text = "RESUME";
+    }
+    int text_w = MeasureText(text, BUTTON_SIZE);
+    Color color = LIGHTGRAY;
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
+        if (!state->is_hovering_pause_button) {
+            PlaySound(state->hover_button_sound);
+        }
+        state->is_hovering_pause_button = true;
+        color = PURPLE;
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            if (state->playstate == STATE_PAUSED) {
+                state->playstate = STATE_PLAYING;
+            } else {
+                state->playstate = STATE_PAUSED;
+            }
+        }
+    } else {
+        state->is_hovering_pause_button = false;
+    }
+    if (IsKeyPressed(KEY_P) || 
+        (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_MIDDLE_RIGHT))
+    ) {
+        if (state->playstate == STATE_PAUSED) {
+            state->playstate = STATE_PLAYING;
+        } else {
+            state->playstate = STATE_PAUSED;
+        }
+    }
+    DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
+    DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
+             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
 }
 
 void DrawStats(struct GameState* state) {
@@ -394,12 +440,14 @@ void* module_main(void* data) {
             DrawNextTetri(state);
             QuitButton(state);
             PlayButton(state);
+            PauseButton(state);
             DrawStats(state);
             #ifdef DEBUG
                 DrawFPS(10, 10);
             #endif
 
-            if (state->playstate == STATE_PLAYING) {
+            if (state->playstate == STATE_PLAYING ||
+                state->playstate == STATE_PAUSED) {
                 DrawTetrimino(state->preview_block.id, 
                               GAME_BOARD_X + state->preview_block.x*BLOCK_SIZE, 
                               GAME_BOARD_Y + state->preview_block.y*BLOCK_SIZE, 
@@ -412,41 +460,65 @@ void* module_main(void* data) {
                               state->active_block.rot,
                               false,
                               &(Rectangle){GAME_BOARD_X, GAME_BOARD_Y, GAME_BOARD_W, GAME_BOARD_H});
-                if (IsKeyPressed(KEY_LEFT)) {
-                    if (TryMoveBlock(state, -1, 0, 0, &state->active_block)) {
-                        PlaySound(state->move_horizontal_sound);
-                        SetPreviewBlock(state, state->active_block.id);
-                    };
-                }
-                else if (IsKeyPressed(KEY_RIGHT)) {
-                    if (TryMoveBlock(state, 1, 0, 0, &state->active_block)) {
-                        PlaySound(state->move_horizontal_sound);
-                        SetPreviewBlock(state, state->active_block.id);
+                if (state->playstate == STATE_PAUSED) {
+                    DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, (Color){0, 0, 0, 100});
+                    DrawText("PAUSED", WINDOW_WIDTH/2 - 50, WINDOW_HEIGHT/2 - 10, 20, WHITE);
+                } else { // playing
+                    bool gamepad_on = IsGamepadAvailable(GAMEPAD);
+                    DrawText(TextFormat("GP%d: %s", GAMEPAD, GetGamepadName(GAMEPAD)), 10, 10, 10, BLACK);
+                    if (IsKeyPressed(KEY_LEFT) || 
+                        (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_LEFT))
+                    ) {
+                        if (TryMoveBlock(state, -1, 0, 0, &state->active_block)) {
+                            PlaySound(state->move_horizontal_sound);
+                            SetPreviewBlock(state, state->active_block.id);
+                        };
                     }
-                }
-                else if (IsKeyPressed(KEY_UP)) {
-                    if (TryMoveBlock(state, 0, 0, 1, &state->active_block)) {
-                        PlaySound(state->rotate_sound);
-                        SetPreviewBlock(state, state->active_block.id);
+                    else if (IsKeyPressed(KEY_RIGHT) || 
+                        (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_RIGHT))
+                    ) {
+                        if (TryMoveBlock(state, 1, 0, 0, &state->active_block)) {
+                            PlaySound(state->move_horizontal_sound);
+                            SetPreviewBlock(state, state->active_block.id);
+                        }
                     }
-                }
-                else if (IsKeyPressed(KEY_DOWN)) {
-                    if (TryMoveBlock(state, 0, 0, -1, &state->active_block)) {
-                        PlaySound(state->rotate_sound);
-                        SetPreviewBlock(state, state->active_block.id);
+                    else if (IsKeyPressed(KEY_UP) || 
+                        (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_TRIGGER_1))
+                    ) {
+                        if (TryMoveBlock(state, 0, 0, 1, &state->active_block)) {
+                            PlaySound(state->rotate_sound);
+                            SetPreviewBlock(state, state->active_block.id);
+                        }
                     }
-                }
-                else if (IsKeyPressed(KEY_SPACE)) {
-                    while (TryMoveBlock(state, 0, 1, 0, &state->active_block)) {}
-                    RunEndTurn(state);
-                }
-                if (GetTime() - state->last_time > TIME_STEP) {
-                    state->last_time = GetTime();
-                    bool moved = TryMoveBlock(state, 0, 1, 0, &state->active_block);
-                    if (!moved) {
+                    else if (IsKeyPressed(KEY_DOWN) ||
+                        (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_TRIGGER_1))
+                    ) {
+                        if (TryMoveBlock(state, 0, 0, -1, &state->active_block)) {
+                            PlaySound(state->rotate_sound);
+                            SetPreviewBlock(state, state->active_block.id);
+                        }
+                    }
+                    else if (IsKeyPressed(KEY_SPACE) || 
+                        (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+                    ) {
+                        while (TryMoveBlock(state, 0, 1, 0, &state->active_block)) {}
                         RunEndTurn(state);
-                    } else {
-                        PlaySound(state->move_down_sound);
+                    }
+                    float time_step = TIME_STEP;
+                    if (IsKeyDown(KEY_F) || 
+                        (gamepad_on && IsGamepadButtonDown(GAMEPAD, GAMEPAD_BUTTON_LEFT_TRIGGER_2)) ||
+                        (gamepad_on && IsGamepadButtonDown(GAMEPAD, GAMEPAD_BUTTON_RIGHT_TRIGGER_2))
+                    ) {
+                        time_step = TIME_STEP_FAST;
+                    }
+                    if (GetTime() - state->last_time > time_step) {
+                        state->last_time = GetTime();
+                        bool moved = TryMoveBlock(state, 0, 1, 0, &state->active_block);
+                        if (!moved) {
+                            RunEndTurn(state);
+                        } else {
+                            PlaySound(state->move_down_sound);
+                        }
                     }
                 }
             } else if (state->playstate == STATE_MENU) {
