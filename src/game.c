@@ -25,9 +25,12 @@
 
 void InitSound(struct GameState* state) {
     InitAudioDevice();
-    // state->music = LoadMusicStream("./assets/8_Bit_Retro_Funk-David_Renda.mp3");
-    // state->music = LoadMusicStream("./assets/very-lush-and-swag-loop-74140.mp3");
-    state->music = LoadMusicStream("./assets/song-2018-30015.mp3");
+    // load same song twice cuz it's much shorter
+    state->songs[0] = LoadMusicStream("./assets/very-lush-and-swag-loop-74140.mp3");
+    state->songs[1] = LoadMusicStream("./assets/very-lush-and-swag-loop-74140.mp3");
+    state->songs[2] = LoadMusicStream("./assets/song-2018-30015.mp3");
+    state->songs[3] = LoadMusicStream("./assets/8_Bit_Retro_Funk-David_Renda.mp3");
+
     state->game_over_sound = LoadSound("./assets/videogame-death-sound.mp3");
     state->move_down_sound = LoadSound("./assets/one_beep-99630.mp3");
     state->lock_sound = LoadSound("./assets/deep-thud-8bit.mp3");
@@ -37,6 +40,24 @@ void InitSound(struct GameState* state) {
     state->reload_sound = LoadSound("./assets/8-bit-laser-151672.mp3");
     state->play_button_sound = LoadSound("./assets/coin-collect-retro-8-bit-sound-effect.mp3");
     state->hover_button_sound = LoadSound("./assets/cymbal-83127.mp3");
+
+    state->current_song = 0;
+}
+
+void DeinitSound(struct GameState* state) {
+    for (int i = 0; i < SONG_COUNT; i++) {
+        UnloadMusicStream(state->songs[i]);
+    }
+    UnloadSound(state->game_over_sound);
+    UnloadSound(state->move_down_sound);
+    UnloadSound(state->lock_sound);
+    UnloadSound(state->row_clear_sound);
+    UnloadSound(state->rotate_sound);
+    UnloadSound(state->move_horizontal_sound);
+    UnloadSound(state->reload_sound);
+    UnloadSound(state->play_button_sound);
+    UnloadSound(state->hover_button_sound);
+    CloseAudioDevice();
 }
 
 bool TryMoveBlock(struct GameState* state, int dx, int dy, int drot, struct Block* block) {
@@ -330,15 +351,28 @@ void* module_main(void* data) {
         GameInit(state);
         SetConfigFlags(FLAG_VSYNC_HINT | FLAG_MSAA_4X_HINT);
         SetTargetFPS(60);
-        InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
         InitSound(state);
-        PlayMusicStream(state->music);
+        InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
+
+        state->time_song_started = GetTime();
+        PlayMusicStream(state->songs[state->current_song % SONG_COUNT]);
     } else {
       // run on reload
     }
 
     while (!WindowShouldClose()) {
-        UpdateMusicStream(state->music);
+        unsigned int cur_song = state->current_song % SONG_COUNT;
+        if (IsMusicStreamPlaying(state->songs[cur_song])) {
+            float time_ran = GetTime() - state->time_song_started;
+            if (time_ran >= GetMusicTimeLength(state->songs[cur_song])) {
+                StopMusicStream(state->songs[cur_song]);
+                cur_song = (cur_song + 1) % SONG_COUNT;
+                state->current_song = cur_song;
+                state->time_song_started = GetTime();
+                PlayMusicStream(state->songs[cur_song]);
+            }
+        }
+        UpdateMusicStream(state->songs[cur_song]);
         BeginDrawing();
         {
             ClearBackground(RAYWHITE);
@@ -444,7 +478,7 @@ void* module_main(void* data) {
     }
 
     CloseWindow();
-    UnloadMusicStream(state->music);
+    DeinitSound(state);
     state->playstate = STATE_QUITTING;
 
     return state;

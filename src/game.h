@@ -18,6 +18,8 @@ struct Block {
   int rot;
 };
 
+#define SONG_COUNT 4
+
 struct GameState {
   enum PlayState playstate;
   int next_block_id;
@@ -27,7 +29,10 @@ struct GameState {
   struct Block active_block;
   struct Block preview_block;
   char board[BLOCK_COUNT_Y + EXTRA_ABOVE][BLOCK_COUNT_X];
-  Music music;
+
+  unsigned int current_song;
+  float time_song_started; 
+  Music songs[SONG_COUNT];
 
   Sound move_down_sound;
   Sound move_horizontal_sound;
@@ -36,6 +41,7 @@ struct GameState {
   Sound rotate_sound;
   Sound row_clear_sound;
   Sound game_over_sound;
+
   Sound play_button_sound;
   Sound quit_button_sound;
   Sound hover_button_sound;
