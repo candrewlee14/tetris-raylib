@@ -140,12 +140,12 @@ void GameInit(struct GameState* state) {
     state->last_time = GetTime();
     SetRandomSeed(GetTime() * 1000);
     state->next_block_id = GetRandomValue(0, 6); 
-    GetNewActiveBlock(state);
     for (int i = 0; i < BLOCK_COUNT_Y + EXTRA_ABOVE; i++) {
         for (int j = 0; j < BLOCK_COUNT_X; j++) {
             state->board[i][j] = 0;
         }
     }
+    GetNewActiveBlock(state);
 }
 
 
@@ -243,6 +243,13 @@ void QuitButton(struct GameState* state) {
     } else {
         state->is_hovering_quit_button = false;
     }
+    if (state->gamepad_hilighted_btn == BTN_QUIT) {
+        color = PINK;
+        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+            printf("Quitting...\n");
+            state->playstate = STATE_QUITTING;
+        }
+    }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
              button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
@@ -267,10 +274,20 @@ void PlayButton(struct GameState* state) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             GameInit(state);
             state->playstate = STATE_PLAYING;
+            state->gamepad_hilighted_btn = BTN_NONE;
             PlaySound(state->play_button_sound);
         }
     } else {
         state->is_hovering_play_button = false;
+    }
+    if (state->gamepad_hilighted_btn == BTN_PLAY) {
+        color = SKYBLUE;
+        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+            GameInit(state);
+            state->playstate = STATE_PLAYING;
+            state->gamepad_hilighted_btn = BTN_NONE;
+            PlaySound(state->play_button_sound);
+        }
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
@@ -298,20 +315,37 @@ void PauseButton(struct GameState* state) {
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             if (state->playstate == STATE_PAUSED) {
                 state->playstate = STATE_PLAYING;
+                state->gamepad_hilighted_btn = BTN_NONE;
             } else {
                 state->playstate = STATE_PAUSED;
+                state->gamepad_hilighted_btn = BTN_PAUSE;
             }
         }
     } else {
         state->is_hovering_pause_button = false;
+    }
+    if (state->gamepad_hilighted_btn == BTN_PAUSE) {
+        color = PURPLE;
+        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+            if (state->playstate == STATE_PAUSED) {
+                state->playstate = STATE_PLAYING;
+                state->gamepad_hilighted_btn = BTN_NONE;
+            } else {
+                state->playstate = STATE_PAUSED;
+                state->gamepad_hilighted_btn = BTN_PAUSE;
+            }
+
+        }
     }
     if (IsKeyPressed(KEY_P) || 
         (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_MIDDLE_RIGHT))
     ) {
         if (state->playstate == STATE_PAUSED) {
             state->playstate = STATE_PLAYING;
+            state->gamepad_hilighted_btn = BTN_NONE;
         } else {
             state->playstate = STATE_PAUSED;
+            state->gamepad_hilighted_btn = BTN_PAUSE;
         }
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
@@ -400,6 +434,9 @@ void* module_main(void* data) {
         InitSound(state);
         InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
 
+        state->playstate = STATE_MENU;
+        state->gamepad_hilighted_btn = BTN_PLAY;
+
         state->time_song_started = GetTime();
         PlayMusicStream(state->songs[state->current_song % SONG_COUNT]);
     } else {
@@ -438,14 +475,43 @@ void* module_main(void* data) {
                 DrawTetrimino(i, 50, 10 + i*80, 0, false, NULL );
             }
             DrawNextTetri(state);
-            QuitButton(state);
-            PlayButton(state);
-            PauseButton(state);
             DrawStats(state);
             #ifdef DEBUG
                 DrawFPS(10, 10);
             #endif
 
+            bool gamepad_on = IsGamepadAvailable(GAMEPAD);
+            // handle gamepad menu navigation
+            if (state->playstate == STATE_MENU || state->playstate == STATE_GAME_OVER) {
+                if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+                    PlaySound(state->move_horizontal_sound);
+                    state->gamepad_hilighted_btn++;
+                    if (state->gamepad_hilighted_btn > BTN_QUIT) {
+                        state->gamepad_hilighted_btn = BTN_PLAY;
+                    } 
+                } else if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+                    PlaySound(state->move_horizontal_sound);
+                    state->gamepad_hilighted_btn--;
+                    if (state->gamepad_hilighted_btn < BTN_PLAY) {
+                        state->gamepad_hilighted_btn = BTN_QUIT;
+                    } 
+                }
+            } else if (state->playstate == STATE_PAUSED) {
+                if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+                    PlaySound(state->move_horizontal_sound);
+                    state->gamepad_hilighted_btn++;
+                    if (state->gamepad_hilighted_btn > BTN_QUIT) {
+                        state->gamepad_hilighted_btn = BTN_PAUSE;
+                    } 
+                } else if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+                    PlaySound(state->move_horizontal_sound);
+                    state->gamepad_hilighted_btn--;
+                    if (state->gamepad_hilighted_btn < BTN_PAUSE) {
+                        state->gamepad_hilighted_btn = BTN_QUIT;
+                    } 
+                }
+            }
+            // handle game play
             if (state->playstate == STATE_PLAYING ||
                 state->playstate == STATE_PAUSED) {
                 DrawTetrimino(state->preview_block.id, 
@@ -463,8 +529,8 @@ void* module_main(void* data) {
                 if (state->playstate == STATE_PAUSED) {
                     DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, (Color){0, 0, 0, 100});
                     DrawText("PAUSED", WINDOW_WIDTH/2 - 50, WINDOW_HEIGHT/2 - 10, 20, WHITE);
+
                 } else { // playing
-                    bool gamepad_on = IsGamepadAvailable(GAMEPAD);
                     if (IsKeyPressed(KEY_LEFT) || 
                         (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_LEFT))
                     ) {
@@ -527,6 +593,10 @@ void* module_main(void* data) {
                 }
             }
 
+            // put these after so starting the game doesn't immediately drop a block
+            QuitButton(state);
+            PlayButton(state);
+            PauseButton(state);
         }    
         EndDrawing();
     
