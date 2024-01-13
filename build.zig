@@ -19,7 +19,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .shared = optimize == .Debug,
-        // .shared = true,
     });
     const raylib = raylib_dep.artifact("raylib");
     b.installArtifact(raylib);

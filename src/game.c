@@ -23,6 +23,22 @@
 
 #define TIME_STEP 0.5f
 
+void InitSound(struct GameState* state) {
+    InitAudioDevice();
+    // state->music = LoadMusicStream("./assets/8_Bit_Retro_Funk-David_Renda.mp3");
+    // state->music = LoadMusicStream("./assets/very-lush-and-swag-loop-74140.mp3");
+    state->music = LoadMusicStream("./assets/song-2018-30015.mp3");
+    state->game_over_sound = LoadSound("./assets/videogame-death-sound.mp3");
+    state->move_down_sound = LoadSound("./assets/one_beep-99630.mp3");
+    state->lock_sound = LoadSound("./assets/deep-thud-8bit.mp3");
+    state->row_clear_sound = LoadSound("./assets/8-bit-powerup-6768.mp3");
+    state->rotate_sound = LoadSound("./assets/woosh-sfx-95844.mp3");
+    state->move_horizontal_sound = LoadSound("./assets/impact-8-bit-retro.mp3");
+    state->reload_sound = LoadSound("./assets/8-bit-laser-151672.mp3");
+    state->play_button_sound = LoadSound("./assets/coin-collect-retro-8-bit-sound-effect.mp3");
+    state->hover_button_sound = LoadSound("./assets/cymbal-83127.mp3");
+}
+
 bool TryMoveBlock(struct GameState* state, int dx, int dy, int drot, struct Block* block) {
     int x = block->x + dx;
     int y = block->y + dy;
@@ -191,10 +207,16 @@ void QuitButton(struct GameState* state) {
     Color color = LIGHTGRAY;
     if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
         color = PINK;
+        if (!state->is_hovering_quit_button) {
+            PlaySound(state->hover_button_sound);
+        }
+        state->is_hovering_quit_button = true;
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             printf("Quitting...\n");
             state->playstate = STATE_QUITTING;
         }
+    } else {
+        state->is_hovering_quit_button = false;
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
@@ -212,11 +234,18 @@ void PlayButton(struct GameState* state) {
     int text_w = MeasureText(text, BUTTON_SIZE);
     Color color = LIGHTGRAY;
     if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
+        if (!state->is_hovering_play_button) {
+            PlaySound(state->hover_button_sound);
+        }
+        state->is_hovering_play_button = true;
         color = SKYBLUE;
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             GameInit(state);
             state->playstate = STATE_PLAYING;
+            PlaySound(state->play_button_sound);
         }
+    } else {
+        state->is_hovering_play_button = false;
     }
     DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
     DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
@@ -281,9 +310,15 @@ void DrawNextTetri(struct GameState* state) {
 void RunEndTurn(struct GameState* state) {
     state->turn++;
     LockActiveBlock(state);
-    state->rows_cleared += ClearFullRows(state);
+    PlaySound(state->lock_sound);
+    int turn_rows_cleared = ClearFullRows(state);
+    state->rows_cleared += turn_rows_cleared;
+    if (turn_rows_cleared > 0) {
+        PlaySound(state->row_clear_sound);
+    }
     GetNewActiveBlock(state);
     if (!TryMoveBlock(state, 0, 0, 0, &state->active_block)) {
+        PlaySound(state->game_over_sound);
         state->playstate = STATE_GAME_OVER;
     }
 }
@@ -296,11 +331,14 @@ void* module_main(void* data) {
         SetConfigFlags(FLAG_VSYNC_HINT | FLAG_MSAA_4X_HINT);
         SetTargetFPS(60);
         InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
+        InitSound(state);
+        PlayMusicStream(state->music);
     } else {
       // run on reload
     }
 
     while (!WindowShouldClose()) {
+        UpdateMusicStream(state->music);
         BeginDrawing();
         {
             ClearBackground(RAYWHITE);
@@ -341,20 +379,28 @@ void* module_main(void* data) {
                               false,
                               &(Rectangle){GAME_BOARD_X, GAME_BOARD_Y, GAME_BOARD_W, GAME_BOARD_H});
                 if (IsKeyPressed(KEY_LEFT)) {
-                    TryMoveBlock(state, -1, 0, 0, &state->active_block);
-                    SetPreviewBlock(state, state->active_block.id);
+                    if (TryMoveBlock(state, -1, 0, 0, &state->active_block)) {
+                        PlaySound(state->move_horizontal_sound);
+                        SetPreviewBlock(state, state->active_block.id);
+                    };
                 }
                 else if (IsKeyPressed(KEY_RIGHT)) {
-                    TryMoveBlock(state, 1, 0, 0, &state->active_block);
-                    SetPreviewBlock(state, state->active_block.id);
+                    if (TryMoveBlock(state, 1, 0, 0, &state->active_block)) {
+                        PlaySound(state->move_horizontal_sound);
+                        SetPreviewBlock(state, state->active_block.id);
+                    }
                 }
                 else if (IsKeyPressed(KEY_UP)) {
-                    TryMoveBlock(state, 0, 0, 1, &state->active_block);
-                    SetPreviewBlock(state, state->active_block.id);
+                    if (TryMoveBlock(state, 0, 0, 1, &state->active_block)) {
+                        PlaySound(state->rotate_sound);
+                        SetPreviewBlock(state, state->active_block.id);
+                    }
                 }
                 else if (IsKeyPressed(KEY_DOWN)) {
-                    TryMoveBlock(state, 0, 0, -1, &state->active_block);
-                    SetPreviewBlock(state, state->active_block.id);
+                    if (TryMoveBlock(state, 0, 0, -1, &state->active_block)) {
+                        PlaySound(state->rotate_sound);
+                        SetPreviewBlock(state, state->active_block.id);
+                    }
                 }
                 else if (IsKeyPressed(KEY_SPACE)) {
                     while (TryMoveBlock(state, 0, 1, 0, &state->active_block)) {}
@@ -365,7 +411,9 @@ void* module_main(void* data) {
                     bool moved = TryMoveBlock(state, 0, 1, 0, &state->active_block);
                     if (!moved) {
                         RunEndTurn(state);
-                    } 
+                    } else {
+                        PlaySound(state->move_down_sound);
+                    }
                 }
             } else if (state->playstate == STATE_MENU) {
                 if (GetTime() - state->last_time > TIME_STEP) {
@@ -381,10 +429,11 @@ void* module_main(void* data) {
         if (IsKeyPressed(KEY_Q)) {
             printf("Quitting...\n");
             state->playstate = STATE_QUITTING;
-            return state;
+            break;
         }
         #ifdef DEBUG
             if (IsKeyPressed(KEY_R)) {
+                PlaySound(state->reload_sound);
                 printf("Reloading...\n");
                 return state;
             }
@@ -395,6 +444,7 @@ void* module_main(void* data) {
     }
 
     CloseWindow();
+    UnloadMusicStream(state->music);
     state->playstate = STATE_QUITTING;
 
     return state;
