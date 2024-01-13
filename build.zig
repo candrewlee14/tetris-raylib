@@ -37,7 +37,12 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     const game_obj_step = b.step("game-reloadable", "Compile reloadable game object");
-    const game_obj = b.addSharedLibrary(.{
+    const game_obj = if (optimize == .Debug) b.addSharedLibrary(.{
+        .name = "game-reloadable",
+        .root_source_file = null,
+        .target = target,
+        .optimize = optimize,
+    }) else b.addStaticLibrary(.{
         .name = "game-reloadable",
         .root_source_file = null,
         .target = target,
@@ -55,6 +60,8 @@ pub fn build(b: *std.Build) void {
     if (optimize == .Debug) {
         exe.root_module.addCMacro("DEBUG", "1");
         game_obj.root_module.addCMacro("DEBUG", "1");
+    } else {
+        exe.linkLibrary(game_obj);
     }
     switch (target.result.os.tag) {
         .linux => {
@@ -64,6 +71,10 @@ pub fn build(b: *std.Build) void {
         .macos => {
             exe.root_module.addCMacro("MACOS", "1");
             game_obj.root_module.addCMacro("MACOS", "1");
+        },
+        .windows => {
+            exe.root_module.addCMacro("WINDOWS", "1");
+            game_obj.root_module.addCMacro("WINDOWS", "1");
         },
         else => @panic("Unsupported OS"),
     }

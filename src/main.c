@@ -1,10 +1,16 @@
-#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#ifdef DEBUG
+#include <dlfcn.h>
+#endif
 #include "game.h"
 
 typedef void* module_main_func(void* data);
+
+#ifndef DEBUG
+    extern void* module_main(void* data);
+#endif
 
 int main(void)
 {
@@ -30,7 +36,9 @@ int main(void)
         #endif
 
         if (main_func == NULL) {
+            #ifdef DEBUG
             printf("Error: %s\n", dlerror());
+            #endif
             return 1;
         }
 
@@ -40,10 +48,14 @@ int main(void)
             state = main_func(NULL);
         }
         if ((*state).playstate == STATE_QUITTING) {
+            #ifdef DEBUG
             dlclose(handle);  
+            #endif
             break;
         }
+        #ifdef DEBUG
         dlclose(handle);  
+        #endif
     }
     if (state != NULL) {
         free(state);

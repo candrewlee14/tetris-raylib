@@ -465,7 +465,6 @@ void* module_main(void* data) {
                     DrawText("PAUSED", WINDOW_WIDTH/2 - 50, WINDOW_HEIGHT/2 - 10, 20, WHITE);
                 } else { // playing
                     bool gamepad_on = IsGamepadAvailable(GAMEPAD);
-                    DrawText(TextFormat("GP%d: %s", GAMEPAD, GetGamepadName(GAMEPAD)), 10, 10, 10, BLACK);
                     if (IsKeyPressed(KEY_LEFT) || 
                         (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_LEFT))
                     ) {
