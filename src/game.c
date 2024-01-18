@@ -6,22 +6,26 @@
 #include "game.h"
 #include "tetr.h"
 
-#define TITLE_SIZE_RATIO 0.05f
+#define TITLE_SIZE_RATIO 0.065f
+#define TITLE_Y_RATIO 0.026f
+
+#define LEFT_TETRS_X_RATIO 0.08f
 
 #define BUTTON_WIDTH_RATIO 0.2f
 #define BUTTON_HEIGHT_RATIO 0.0666f
 #define BUTTON_TEXT_SIZE_RATIO_TO_BUTTON 0.8f
 #define BUTTON_SPACING_RATIO 0.025f
+#define BUTTONS_Y_RATIO 0.88f
 
-#define STATS_Y_RATIO 0.42f
+#define STATS_Y_RATIO 0.38f
 #define STATS_X_RATIO 0.82f
 #define BUTTONS_X_RATIO 0.82f
 #define NEXT_TETRI_Y_RATIO 0.1f
 #define TEXT_SIZE_RATIO 0.05f
 
 #define BLOCK_SIZE_RATIO_TO_WINDOW_Y 0.043f
-#define BOARD_X_RATIO 0.5f
-#define BOARD_Y_RATIO 0.1f
+#define BOARD_X_RATIO 0.495f
+#define BOARD_Y_RATIO 0.11f
 
 #define GAMEPAD 0
 
@@ -237,7 +241,7 @@ void QuitButton(struct GameState* state) {
     int button_text_size = (int)(BUTTON_TEXT_SIZE_RATIO_TO_BUTTON * (float)button_height);
 
     int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
-    int button_y = window_height - 86 ;
+    int button_y = (int)(BUTTONS_Y_RATIO * (float)window_height);
 
     char* text = "QUIT";
     int text_w = MeasureText(text, button_text_size);
@@ -257,7 +261,9 @@ void QuitButton(struct GameState* state) {
     }
     if (state->gamepad_hilighted_btn == BTN_QUIT) {
         color = PINK;
-        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+        if (IsKeyPressed(KEY_SPACE) ||
+            (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+        ) {
             printf("Quitting...\n");
             state->playstate = STATE_QUITTING;
         }
@@ -276,7 +282,8 @@ void PlayButton(struct GameState* state) {
     int button_text_size = (int)(BUTTON_TEXT_SIZE_RATIO_TO_BUTTON * (float)button_height);
 
     int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
-    int button_y = window_height - 86 - (button_height + button_spacing);
+    int button_y = (int)(BUTTONS_Y_RATIO * (float)window_height) - (button_height + button_spacing);
+
     char* text = "PLAY";
     char* restart = "RESTART";
     if (state->playstate != STATE_MENU) {
@@ -301,7 +308,9 @@ void PlayButton(struct GameState* state) {
     }
     if (state->gamepad_hilighted_btn == BTN_PLAY) {
         color = SKYBLUE;
-        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+        if (IsKeyPressed(KEY_SPACE) ||
+            (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+        ) {
             GameInit(state);
             state->playstate = STATE_PLAYING;
             state->gamepad_hilighted_btn = BTN_NONE;
@@ -322,7 +331,7 @@ void PauseButton(struct GameState* state) {
     int button_spacing = (int)(BUTTON_SPACING_RATIO * (float)window_height);
 
     int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
-    int button_y = window_height - 86 - (button_height + button_spacing) * 2;
+    int button_y = (int)(BUTTONS_Y_RATIO * (float)window_height) - (button_height + button_spacing) * 2;
 
     if (state->playstate == STATE_MENU || state->playstate == STATE_GAME_OVER) {
         return;
@@ -353,7 +362,9 @@ void PauseButton(struct GameState* state) {
     }
     if (state->gamepad_hilighted_btn == BTN_PAUSE) {
         color = PURPLE;
-        if (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+        if (IsKeyPressed(KEY_SPACE) ||
+            (IsGamepadAvailable(GAMEPAD) && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+        ) {
             if (state->playstate == STATE_PAUSED) {
                 state->playstate = STATE_PLAYING;
                 state->gamepad_hilighted_btn = BTN_NONE;
@@ -386,20 +397,21 @@ void DrawStats(struct GameState* state) {
     int stats_y = (int)(STATS_Y_RATIO * (float)window_height);
     int stats_x = (int)(STATS_X_RATIO * (float)window_width);
     int text_size = (int)(TEXT_SIZE_RATIO * (float)window_height);
+    char* cleared_text = "CLEARED:";
+    int cleared_text_w = MeasureText(cleared_text, text_size);
     {
         char* text = "TURN:";
-        DrawText(text, stats_x - 100, stats_y, text_size, BLACK);
+        DrawText(text, stats_x - cleared_text_w/2, stats_y, text_size, BLACK);
         const char* num_txt =  TextFormat("%i", state->turn + 1);
         int text_w = MeasureText(num_txt, text_size);
-        DrawText(num_txt, stats_x - text_w , stats_y + text_size + 5, text_size, BLACK);
+        DrawText(num_txt, stats_x - text_w + cleared_text_w/2, stats_y + text_size + 5, text_size, BLACK);
     }
     {
-        char* text = "CLEARED:";
         int text_y = stats_y + 3 * text_size;
         const char* num_txt =  TextFormat("%i", state->rows_cleared);
-        DrawText(text, stats_x - 100, text_y, text_size, BLACK);
+        DrawText(cleared_text, stats_x - cleared_text_w/2, text_y, text_size, BLACK);
         int text_w = MeasureText(num_txt, text_size);
-        DrawText(num_txt, stats_x - text_w, text_y + text_size + 5, text_size, BLACK);
+        DrawText(num_txt, stats_x - text_w + cleared_text_w/2, text_y + text_size + 5, text_size, BLACK);
     }
 }
 
@@ -411,7 +423,7 @@ void DrawNextTetri(struct GameState* state) {
     int y = (int)(NEXT_TETRI_Y_RATIO * (float)window_height);
     int w = block_size * 4 + 20;
     int h = block_size * 4 + 20;
-    int x = window_width - 250 - w/2;
+    int x = (int)(BUTTONS_X_RATIO * (float)window_width) - w/2;
     int text_w = MeasureText("NEXT", text_size);
     DrawText("NEXT", x + w/2 - text_w/2, y - text_size - 3, text_size, BLACK);
     DrawRectangle(x, y, w, h, BLACK);
@@ -454,6 +466,7 @@ void RunEndTurn(struct GameState* state) {
     if (!TryMoveBlock(state, 0, 0, 0, &state->active_block)) {
         PlaySound(state->game_over_sound);
         state->playstate = STATE_GAME_OVER;
+        state->gamepad_hilighted_btn = BTN_PLAY;
     }
 }
 
@@ -511,12 +524,17 @@ void* module_main(bool fullscreen, void* data) {
                 }
                 int title_size = (int)(TITLE_SIZE_RATIO * (float)GetRenderHeight());
                 int text_w = MeasureText(text, title_size);
-                DrawText(text, window_width/2 - text_w/2, 24, title_size, color);
+                int text_x = (int)(BOARD_X_RATIO * (float)window_width) - text_w/2;
+                int text_y = (int)(TITLE_Y_RATIO * (float)window_height);
+                DrawText(text, text_x, text_y, title_size, color);
             }
             DrawGameBoard(game_board_x, game_board_y, game_board_w, game_board_h, 5, state);
 
-            for (int i = 0; i < 12; i++) {
-                DrawTetrimino(i % 7, 50, 10 + i*(block_size * 2 + 10), 0, false, NULL );
+            int tetr_x = (int)(LEFT_TETRS_X_RATIO * (float)window_width);
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 12; j++) {
+                    DrawTetrimino((j + i ) % 7, tetr_x + (i * block_size), -20 + j*(block_size * 2 + 2), 0, false, NULL );
+                }
             }
             DrawNextTetri(state);
             DrawStats(state);
@@ -527,13 +545,18 @@ void* module_main(bool fullscreen, void* data) {
             bool gamepad_on = IsGamepadAvailable(GAMEPAD);
             // handle gamepad menu navigation
             if (state->playstate == STATE_MENU || state->playstate == STATE_GAME_OVER) {
-                if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+                if (IsKeyPressed(KEY_DOWN) ||
+                    (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN))
+                ) {
                     PlaySound(state->move_horizontal_sound);
                     state->gamepad_hilighted_btn++;
                     if (state->gamepad_hilighted_btn > BTN_QUIT) {
                         state->gamepad_hilighted_btn = BTN_PLAY;
                     } 
-                } else if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+                } else if (
+                    IsKeyPressed(KEY_UP) ||
+                    (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP))
+                ) {
                     PlaySound(state->move_horizontal_sound);
                     state->gamepad_hilighted_btn--;
                     if (state->gamepad_hilighted_btn < BTN_PLAY) {
@@ -541,13 +564,19 @@ void* module_main(bool fullscreen, void* data) {
                     } 
                 }
             } else if (state->playstate == STATE_PAUSED) {
-                if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
+                if (
+                    IsKeyPressed(KEY_DOWN) ||
+                    (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN))
+                ) {
                     PlaySound(state->move_horizontal_sound);
                     state->gamepad_hilighted_btn++;
                     if (state->gamepad_hilighted_btn > BTN_QUIT) {
                         state->gamepad_hilighted_btn = BTN_PAUSE;
                     } 
-                } else if (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
+                } else if (
+                    IsKeyPressed(KEY_UP) ||
+                    (gamepad_on && IsGamepadButtonPressed(GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP))
+                ) {
                     PlaySound(state->move_horizontal_sound);
                     state->gamepad_hilighted_btn--;
                     if (state->gamepad_hilighted_btn < BTN_PAUSE) {
