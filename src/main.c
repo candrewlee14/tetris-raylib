@@ -1,19 +1,32 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #ifdef DEBUG
 #include <dlfcn.h>
 #endif
 #include "game.h"
 
-typedef void* module_main_func(void* data);
+typedef void* module_main_func(bool fullscreen, void* data);
 
 #ifndef DEBUG
-    extern void* module_main(void* data);
+    extern void* module_main(bool fullscreen, void* data);
 #endif
 
-int main(void)
+bool fullscreen = false;
+
+int main(int argc, char** argv)
 {
+    // check varargs if "--fulscreen" is present"
+    // if so, set fullscreen to true
+    // if not, set fullscreen to false
+    if (argc > 1) {
+        if (strcmp(argv[1], "--fullscreen") == 0) {
+            fullscreen = true;
+        }
+    }
+
+    
     struct GameState* state = NULL;
     while (true) {
         #ifdef DEBUG
@@ -43,9 +56,9 @@ int main(void)
         }
 
         if (state != NULL) {
-            state = main_func((void*)state);
+            state = main_func(fullscreen, (void*)state);
         } else {
-            state = main_func(NULL);
+            state = main_func(fullscreen, NULL);
         }
         if ((*state).playstate == STATE_QUITTING) {
             #ifdef DEBUG

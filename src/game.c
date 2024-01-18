@@ -6,21 +6,22 @@
 #include "game.h"
 #include "tetr.h"
 
-#define WINDOW_WIDTH 600
-#define WINDOW_HEIGHT 600
-#define TITLE_SIZE 30
-#define BUTTON_SIZE 20
+#define TITLE_SIZE_RATIO 0.05f
 
-#define BUTTON_WIDTH 120
-#define BUTTON_HEIGHT 40
-#define BUTTON_SPACING 15
+#define BUTTON_WIDTH_RATIO 0.2f
+#define BUTTON_HEIGHT_RATIO 0.0666f
+#define BUTTON_TEXT_SIZE_RATIO_TO_BUTTON 0.8f
+#define BUTTON_SPACING_RATIO 0.025f
 
-#define BLOCK_SIZE 24
+#define STATS_Y_RATIO 0.42f
+#define STATS_X_RATIO 0.82f
+#define BUTTONS_X_RATIO 0.82f
+#define NEXT_TETRI_Y_RATIO 0.1f
+#define TEXT_SIZE_RATIO 0.05f
 
-#define GAME_BOARD_X (WINDOW_WIDTH/2 - BLOCK_COUNT_X*BLOCK_SIZE/2)
-#define GAME_BOARD_Y 80
-#define GAME_BOARD_W (BLOCK_COUNT_X*BLOCK_SIZE)
-#define GAME_BOARD_H (BLOCK_COUNT_Y*BLOCK_SIZE)
+#define BLOCK_SIZE_RATIO_TO_WINDOW_Y 0.043f
+#define BOARD_X_RATIO 0.5f
+#define BOARD_Y_RATIO 0.1f
 
 #define GAMEPAD 0
 
@@ -149,8 +150,8 @@ void GameInit(struct GameState* state) {
 }
 
 
-void DrawBlock(int x, int y, Color color) {
-    DrawRectangle(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2, color);
+void DrawBlock(int x, int y, int block_size, Color color ) {
+    DrawRectangle(x + 1, y + 1, block_size - 2, block_size - 2, color);
 }
 
 int ClearFullRows(struct GameState* state) {
@@ -192,18 +193,20 @@ void DrawTetrimino(int id, int x, int y, int rot, bool preview, Rectangle* mask)
     if (pos_rot < 0) {
         pos_rot += 4;
     }
+    int block_size = (int)(BLOCK_SIZE_RATIO_TO_WINDOW_Y * (float)GetRenderHeight());
     for (int yb = 0; yb < size; yb++) {
         for (int xb = 0; xb < size; xb++) {
             if (tetr[pos_rot*size*size + yb*size + xb] > 0) {
                 if (mask != NULL) {
-                    if (!CheckCollisionPointRec((Vector2){x + xb*BLOCK_SIZE, y + yb*BLOCK_SIZE}, *mask)) {
+                    if (!CheckCollisionPointRec((Vector2){x + xb*block_size, y + yb*block_size}, *mask)) {
                         continue;
                     }
                 }
-                DrawBlock(x + xb*BLOCK_SIZE, y + yb*BLOCK_SIZE, color);
+                DrawBlock(x + xb*block_size, y + yb*block_size, block_size, color);
                 if (preview) {
-                    DrawRectangle(x + xb*BLOCK_SIZE + 2, y + yb*BLOCK_SIZE + 2, 
-                                  BLOCK_SIZE - 4, BLOCK_SIZE - 4, BLACK);
+                    // draw black inner
+                    DrawRectangle(x + xb*block_size + 2, y + yb*block_size + 2, 
+                                  block_size - 4, block_size - 4, BLACK);
                 }
             }
         }
@@ -211,13 +214,14 @@ void DrawTetrimino(int id, int x, int y, int rot, bool preview, Rectangle* mask)
 }
 
 void DrawGameBoard(int x, int y, int w, int h, int border_size, struct GameState* state) {
+    int block_size = (int)(BLOCK_SIZE_RATIO_TO_WINDOW_Y * (float)GetRenderHeight());
     DrawRectangle(x - border_size, y - border_size, 
                   w + border_size*2, h + border_size*2, LIGHTGRAY);
     DrawRectangle(x, y, w, h, BLACK);
     for (int i = 0; i < BLOCK_COUNT_Y; i++) {
         for (int j = 0; j < BLOCK_COUNT_X; j++) {
             if (state->board[i + EXTRA_ABOVE][j] > 0) {
-                DrawBlock(x + j*BLOCK_SIZE, y + i*BLOCK_SIZE, 
+                DrawBlock(x + j*block_size, y + i*block_size, block_size, 
                           ColorFromId(state->board[i + EXTRA_ABOVE][j] - 1));
             }
         }
@@ -225,12 +229,20 @@ void DrawGameBoard(int x, int y, int w, int h, int border_size, struct GameState
 }
 
 void QuitButton(struct GameState* state) {
-    int button_x = WINDOW_WIDTH - 100 - 50;
-    int button_y = WINDOW_HEIGHT - 86;
+    int window_width = GetRenderWidth();
+    int window_height = GetRenderHeight();
+    int button_height = (int)(BUTTON_HEIGHT_RATIO * (float)window_height);
+    int button_width = (int)(BUTTON_WIDTH_RATIO * (float)window_width);
+    int button_spacing = (int)(BUTTON_SPACING_RATIO * (float)window_height);
+    int button_text_size = (int)(BUTTON_TEXT_SIZE_RATIO_TO_BUTTON * (float)button_height);
+
+    int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
+    int button_y = window_height - 86 ;
+
     char* text = "QUIT";
-    int text_w = MeasureText(text, BUTTON_SIZE);
+    int text_w = MeasureText(text, button_text_size);
     Color color = LIGHTGRAY;
-    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, button_width, button_height})) {
         color = PINK;
         if (!state->is_hovering_quit_button) {
             PlaySound(state->hover_button_sound);
@@ -250,22 +262,29 @@ void QuitButton(struct GameState* state) {
             state->playstate = STATE_QUITTING;
         }
     }
-    DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
-    DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
-             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
+    DrawRectangle(button_x, button_y, button_width, button_height, color);
+    DrawText(text, button_x + button_width/2 - text_w/2, 
+             button_y + button_height/2 - button_text_size/2 + 2, button_text_size, BLACK);
 }
 
 void PlayButton(struct GameState* state) {
-    int button_x = WINDOW_WIDTH - 100 - 50;
-    int button_y = WINDOW_HEIGHT - 86 - (BUTTON_HEIGHT + BUTTON_SPACING);
+    int window_width = GetRenderWidth();
+    int window_height = GetRenderHeight();
+    int button_height = (int)(BUTTON_HEIGHT_RATIO * (float)window_height);
+    int button_width = (int)(BUTTON_WIDTH_RATIO * (float)window_width);
+    int button_spacing = (int)(BUTTON_SPACING_RATIO * (float)window_height);
+    int button_text_size = (int)(BUTTON_TEXT_SIZE_RATIO_TO_BUTTON * (float)button_height);
+
+    int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
+    int button_y = window_height - 86 - (button_height + button_spacing);
     char* text = "PLAY";
     char* restart = "RESTART";
     if (state->playstate != STATE_MENU) {
         text = restart;
     }
-    int text_w = MeasureText(text, BUTTON_SIZE);
+    int text_w = MeasureText(text, button_text_size);
     Color color = LIGHTGRAY;
-    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, button_width, button_height})) {
         if (!state->is_hovering_play_button) {
             PlaySound(state->hover_button_sound);
         }
@@ -289,24 +308,32 @@ void PlayButton(struct GameState* state) {
             PlaySound(state->play_button_sound);
         }
     }
-    DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
-    DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
-             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
+    DrawRectangle(button_x, button_y, button_width, button_height, color);
+    DrawText(text, button_x + button_width/2 - text_w/2, 
+             button_y + button_height/2 - button_text_size/2 + 2, button_text_size, BLACK);
 }
 
 void PauseButton(struct GameState* state) {
+    int window_width = GetRenderWidth();
+    int window_height = GetRenderHeight();
+    int button_height = (int)(BUTTON_HEIGHT_RATIO * (float)window_height);
+    int button_width = (int)(BUTTON_WIDTH_RATIO * (float)window_width);
+    int button_text_size = (int)((float)button_height * BUTTON_TEXT_SIZE_RATIO_TO_BUTTON);
+    int button_spacing = (int)(BUTTON_SPACING_RATIO * (float)window_height);
+
+    int button_x = (int)(BUTTONS_X_RATIO * (float)window_width) - button_width / 2;
+    int button_y = window_height - 86 - (button_height + button_spacing) * 2;
+
     if (state->playstate == STATE_MENU || state->playstate == STATE_GAME_OVER) {
         return;
     }
-    int button_x = WINDOW_WIDTH - 100 - 50;
-    int button_y = WINDOW_HEIGHT - 86 - (BUTTON_HEIGHT + BUTTON_SPACING) * 2;
     char* text = "PAUSE";
     if (state->playstate == STATE_PAUSED) {
         text = "RESUME";
     }
-    int text_w = MeasureText(text, BUTTON_SIZE);
+    int text_w = MeasureText(text, button_text_size);
     Color color = LIGHTGRAY;
-    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT})) {
+    if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){button_x, button_y, button_width, button_height})) {
         if (!state->is_hovering_pause_button) {
             PlaySound(state->hover_button_sound);
         }
@@ -348,39 +375,45 @@ void PauseButton(struct GameState* state) {
             state->gamepad_hilighted_btn = BTN_PAUSE;
         }
     }
-    DrawRectangle(button_x, button_y, BUTTON_WIDTH, BUTTON_HEIGHT, color);
-    DrawText(text, button_x + BUTTON_WIDTH/2 - text_w/2, 
-             button_y + BUTTON_HEIGHT/2 - BUTTON_SIZE/2 + 2, BUTTON_SIZE, BLACK);
+    DrawRectangle(button_x, button_y, button_width, button_height, color);
+    DrawText(text, button_x + button_width/2 - text_w/2, 
+             button_y + button_height/2 - button_text_size/2 + 2, button_text_size, BLACK);
 }
 
 void DrawStats(struct GameState* state) {
-    int STATS_Y = 250;
-    int TEXT_SIZE = 20;
+    int window_width = GetRenderWidth();
+    int window_height = GetRenderHeight();
+    int stats_y = (int)(STATS_Y_RATIO * (float)window_height);
+    int stats_x = (int)(STATS_X_RATIO * (float)window_width);
+    int text_size = (int)(TEXT_SIZE_RATIO * (float)window_height);
     {
-
         char* text = "TURN:";
-        DrawText(text, WINDOW_WIDTH - 150, STATS_Y, TEXT_SIZE, BLACK);
+        DrawText(text, stats_x - 100, stats_y, text_size, BLACK);
         const char* num_txt =  TextFormat("%i", state->turn + 1);
-        int text_w = MeasureText(num_txt, TEXT_SIZE);
-        DrawText(num_txt, WINDOW_WIDTH - 50 - text_w, STATS_Y + TEXT_SIZE + 5, 20, BLACK);
+        int text_w = MeasureText(num_txt, text_size);
+        DrawText(num_txt, stats_x - text_w , stats_y + text_size + 5, text_size, BLACK);
     }
     {
         char* text = "CLEARED:";
-        int text_y = STATS_Y + 3 * TEXT_SIZE;
+        int text_y = stats_y + 3 * text_size;
         const char* num_txt =  TextFormat("%i", state->rows_cleared);
-        DrawText(text, WINDOW_WIDTH - 150, text_y, 20, BLACK);
-        int text_w = MeasureText(num_txt, 20);
-        DrawText(num_txt, WINDOW_WIDTH - 50 - text_w, text_y + TEXT_SIZE + 5, TEXT_SIZE, BLACK);
+        DrawText(text, stats_x - 100, text_y, text_size, BLACK);
+        int text_w = MeasureText(num_txt, text_size);
+        DrawText(num_txt, stats_x - text_w, text_y + text_size + 5, text_size, BLACK);
     }
 }
 
 void DrawNextTetri(struct GameState* state) {
-    int x = WINDOW_WIDTH - 140;
-    int y = 100;
-    int w = 100;
-    int h = 100;
-    int text_w = MeasureText("NEXT", 20);
-    DrawText("NEXT", x + w/2 - text_w/2, y - 30, 20, BLACK);
+    int window_width = GetRenderWidth();
+    int window_height = GetRenderHeight();
+    int text_size = (int)(TEXT_SIZE_RATIO * (float)window_height);
+    int block_size = (int)(BLOCK_SIZE_RATIO_TO_WINDOW_Y * (float)GetRenderHeight());
+    int y = (int)(NEXT_TETRI_Y_RATIO * (float)window_height);
+    int w = block_size * 4 + 20;
+    int h = block_size * 4 + 20;
+    int x = window_width - 250 - w/2;
+    int text_w = MeasureText("NEXT", text_size);
+    DrawText("NEXT", x + w/2 - text_w/2, y - text_size - 3, text_size, BLACK);
     DrawRectangle(x, y, w, h, BLACK);
     struct TetriminoInfo info = GetTetriminoInfo(state->next_block_id);
     int size = info.size;
@@ -403,8 +436,8 @@ void DrawNextTetri(struct GameState* state) {
             true_size_y++;
         }
     }
-    x += w/2 - size*BLOCK_SIZE/2;
-    y += h/2 - start_y*BLOCK_SIZE/2 - true_size_y*BLOCK_SIZE/2;
+    x += w/2 - size*block_size/2;
+    y += h/2 - start_y*block_size/2 - true_size_y*block_size/2;
     DrawTetrimino(state->next_block_id, x, y, 0, false, NULL);
 }
 
@@ -424,7 +457,7 @@ void RunEndTurn(struct GameState* state) {
     }
 }
 
-void* module_main(void* data) {
+void* module_main(bool fullscreen, void* data) {
     struct GameState* state = (struct GameState*)data;
     if (state == NULL) {
         state = (struct GameState*)malloc(sizeof(struct GameState));
@@ -432,8 +465,10 @@ void* module_main(void* data) {
         SetConfigFlags(FLAG_VSYNC_HINT | FLAG_MSAA_4X_HINT);
         SetTargetFPS(60);
         InitSound(state);
-        InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Tetris");
-
+        InitWindow(1280, 800, "Tetris");
+        if (fullscreen) {
+            ToggleFullscreen();
+        } 
         state->playstate = STATE_MENU;
         state->gamepad_hilighted_btn = BTN_PLAY;
 
@@ -444,6 +479,14 @@ void* module_main(void* data) {
     }
 
     while (!WindowShouldClose()) {
+        int window_width = GetRenderWidth();
+        int window_height = GetRenderHeight();
+        int block_size = (int)(BLOCK_SIZE_RATIO_TO_WINDOW_Y * (float)window_height);
+        int game_board_w = block_size * BLOCK_COUNT_X;
+        int game_board_h = block_size * BLOCK_COUNT_Y;
+        int game_board_x = (int)(BOARD_X_RATIO * (float)window_width) - game_board_w/2;
+        int game_board_y = (int)(BOARD_Y_RATIO * (float)window_height);
+
         unsigned int cur_song = state->current_song % SONG_COUNT;
         if (IsMusicStreamPlaying(state->songs[cur_song])) {
             float time_ran = GetTime() - state->time_song_started;
@@ -466,13 +509,14 @@ void* module_main(void* data) {
                     text = "GAME OVER";
                     color = RED;
                 }
-                int text_w = MeasureText(text, TITLE_SIZE);
-                DrawText(text, WINDOW_WIDTH/2 - text_w/2, 24, TITLE_SIZE, color);
+                int title_size = (int)(TITLE_SIZE_RATIO * (float)GetRenderHeight());
+                int text_w = MeasureText(text, title_size);
+                DrawText(text, window_width/2 - text_w/2, 24, title_size, color);
             }
-            DrawGameBoard(GAME_BOARD_X, GAME_BOARD_Y, GAME_BOARD_W, GAME_BOARD_H, 5, state);
+            DrawGameBoard(game_board_x, game_board_y, game_board_w, game_board_h, 5, state);
 
-            for (int i = 0; i < 7; i++) {
-                DrawTetrimino(i, 50, 10 + i*80, 0, false, NULL );
+            for (int i = 0; i < 12; i++) {
+                DrawTetrimino(i % 7, 50, 10 + i*(block_size * 2 + 10), 0, false, NULL );
             }
             DrawNextTetri(state);
             DrawStats(state);
@@ -515,20 +559,23 @@ void* module_main(void* data) {
             if (state->playstate == STATE_PLAYING ||
                 state->playstate == STATE_PAUSED) {
                 DrawTetrimino(state->preview_block.id, 
-                              GAME_BOARD_X + state->preview_block.x*BLOCK_SIZE, 
-                              GAME_BOARD_Y + state->preview_block.y*BLOCK_SIZE, 
+                              game_board_x + state->preview_block.x*block_size, 
+                              game_board_y + state->preview_block.y*block_size, 
                               state->preview_block.rot,
                               true,
-                              &(Rectangle){GAME_BOARD_X, GAME_BOARD_Y, GAME_BOARD_W, GAME_BOARD_H});
+                              &(Rectangle){game_board_x, game_board_y, game_board_w, game_board_h});
                 DrawTetrimino(state->active_block.id, 
-                              GAME_BOARD_X + state->active_block.x*BLOCK_SIZE, 
-                              GAME_BOARD_Y + state->active_block.y*BLOCK_SIZE, 
+                              game_board_x + state->active_block.x*block_size, 
+                              game_board_y + state->active_block.y*block_size, 
                               state->active_block.rot,
                               false,
-                              &(Rectangle){GAME_BOARD_X, GAME_BOARD_Y, GAME_BOARD_W, GAME_BOARD_H});
+                              &(Rectangle){game_board_x, game_board_y, game_board_w, game_board_h});
                 if (state->playstate == STATE_PAUSED) {
-                    DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, (Color){0, 0, 0, 100});
-                    DrawText("PAUSED", WINDOW_WIDTH/2 - 50, WINDOW_HEIGHT/2 - 10, 20, WHITE);
+                    DrawRectangle(0, 0, window_width, window_height, (Color){0, 0, 0, 100});
+                    char* text = "PAUSED";
+                    int text_size = (int)(TEXT_SIZE_RATIO * (float)window_height);
+                    int text_w = MeasureText(text, text_size);
+                    DrawText("PAUSED", window_width/2 - text_w/2, window_height/2 - text_size/2, text_size, WHITE);
 
                 } else { // playing
                     if (IsKeyPressed(KEY_LEFT) || 
