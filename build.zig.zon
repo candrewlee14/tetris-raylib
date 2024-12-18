@@ -1,15 +1,9 @@
-.{
-    .name = "tetris-raylib",
-    .version = "0.1.0",
-    .dependencies = .{
-        .raylib = .{
-            .url = "https://github.com/raysan5/raylib/archive/1fad8277a37b366841eff1497ca07a7042d4a014.tar.gz",
-            .hash = "122071ca703d3002c9bc6acb83c72ccc333c33aeed535c03d9a59faa5bd6a5f00bfc",
-            
-        },
+.{ .name = "tetris-raylib", .version = "0.1.0", .dependencies = .{
+    .raylib = .{
+        .url = "https://github.com/raysan5/raylib/archive/03ff864087a3ca46a60cd64ef709650cd8d824f5.tar.gz",
+        .hash = "122066f8a13173cdea6626264da8d8fff392b766f8c17abc01125bbd26220b8c6f8f",
     },
-    .paths = .{
-        "src",
-        "build.zig",
-    }
-}
+}, .paths = .{
+    "src",
+    "build.zig",
+} }

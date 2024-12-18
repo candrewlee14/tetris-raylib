@@ -31,7 +31,7 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibC();
     exe.linkLibrary(raylib);
-    exe.addCSourceFile(.{ .file = .{ .path = "src/main.c" }, .flags = &.{
+    exe.addCSourceFile(.{ .file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.c" } }, .flags = &.{
         "-fPIC",
     } });
     b.installArtifact(exe);
@@ -49,7 +49,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     game_obj.linkLibrary(raylib);
-    game_obj.addCSourceFile(.{ .file = .{ .path = "src/game.c" }, .flags = &.{
+    game_obj.addCSourceFile(.{ .file = .{ .src_path = .{ .owner = b, .sub_path = "src/game.c" } }, .flags = &.{
         "-fPIC",
     } });
     const game_obj_art = b.addInstallArtifact(game_obj, .{});
