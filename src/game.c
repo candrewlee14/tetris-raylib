@@ -24,6 +24,8 @@
 #define TEXT_SIZE_RATIO 0.05f
 
 #define BLOCK_SIZE_RATIO_TO_WINDOW_Y 0.043f
+#define BLOCK_SIZE_INNER_PAD 4
+#define BLOCK_SIZE_OUTER_PAD 4
 #define BOARD_X_RATIO 0.495f
 #define BOARD_Y_RATIO 0.11f
 
@@ -155,7 +157,11 @@ void GameInit(struct GameState* state) {
 
 
 void DrawBlock(int x, int y, int block_size, Color color ) {
-    DrawRectangle(x + 1, y + 1, block_size - 2, block_size - 2, color);
+    DrawRectangle(x + BLOCK_SIZE_OUTER_PAD/2, 
+                  y + BLOCK_SIZE_OUTER_PAD/2, 
+                  block_size - BLOCK_SIZE_OUTER_PAD, 
+                  block_size - BLOCK_SIZE_OUTER_PAD, 
+                  color);
 }
 
 int ClearFullRows(struct GameState* state) {
@@ -209,8 +215,11 @@ void DrawTetrimino(int id, int x, int y, int rot, bool preview, Rectangle* mask)
                 DrawBlock(x + xb*block_size, y + yb*block_size, block_size, color);
                 if (preview) {
                     // draw black inner
-                    DrawRectangle(x + xb*block_size + 2, y + yb*block_size + 2, 
-                                  block_size - 4, block_size - 4, BLACK);
+                    DrawRectangle(x + xb*block_size + (BLOCK_SIZE_OUTER_PAD + BLOCK_SIZE_INNER_PAD) / 2, 
+                                  y + yb*block_size + (BLOCK_SIZE_OUTER_PAD + BLOCK_SIZE_INNER_PAD) / 2, 
+                                  block_size - (BLOCK_SIZE_INNER_PAD + BLOCK_SIZE_OUTER_PAD), 
+                                  block_size - (BLOCK_SIZE_INNER_PAD + BLOCK_SIZE_OUTER_PAD), 
+                                  BLACK);
                 }
             }
         }
